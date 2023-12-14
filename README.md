@@ -1,5 +1,5 @@
-# [Just-Jobs-Bot](https://telegram.me/justjobsbot)
-### Current Version - 0.6 [![Build Status](https://travis-ci.org/realslimshanky/Just-Jobs-Bot.svg?branch=master)](https://travis-ci.org/realslimshanky/Just-Jobs-Bot) ([see change logs](https://github.com/realslimshanky/Just-Jobs-Bot/blob/master/ChangeLogs.md))
+# [cuedjobs-Bot](https://telegram.me/cuedjobs)
+### Current Version - 0.6 [![Build Status](https://github.com/AtulRajput01/cued-job_bot.git.svg?branch=main)](https://github.com/AtulRajput01/cued-job_bot.git) ([see change logs](https://github.com/AtulRajput01/cued-job_bot.git)
 Just Jobs Bot is a telegram bot which gathers detail of job opening from employer and post on the Just Jobs Channel.
 
 ## How To Use
