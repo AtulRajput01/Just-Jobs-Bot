@@ -6,6 +6,7 @@ import re
 import signal
 import subprocess
 import sys
+import boto3
 
 from telegram import ChatAction, ParseMode, Update
 from telegram.ext import (CallbackContext, CommandHandler, Filters,
@@ -17,10 +18,10 @@ logging.basicConfig(
 
 """
 ---Process ID Management Starts---
-This part of the code helps out when you want to run your program in background using '&'. This will
-save the process id of the program going in background in a file named 'pid'. Now, when you run you
-program again, the last one will be terminated with the help of pid. If in case the no process exist
-with given process id, simply the `pid` file will be deleted and a new one with current pid will be
+This part of the code helps out when you want to run your program in the background using '&'. This will
+save the process id of the program going in the background in a file named 'pid'. Now, when you run your
+program again, the last one will be terminated with the help of pid. If in case the no process exists
+with the given process id, simply the pid file will be deleted and a new one with the current pid will be
 created.
 """
 currentPID = os.getpid()
@@ -31,7 +32,7 @@ else:
     with open('pid', mode='r') as f:
         try:
             os.kill(int(f.read()), signal.SIGTERM)
-            logging.info(f'Terminating previous instance of {os.path.realpath(__file__)}')
+            logging.info(f'Terminating the previous instance of {os.path.realpath(_file_)}')
         except (ProcessLookupError, ValueError):
             subprocess.run(['rm', 'pid'])
     with open('pid', mode='w') as f:
@@ -43,12 +44,12 @@ else:
 """
 ---Token Management Starts---
 This part will check for the config.json file which holds the Telegram and Channel ID and will also
-give a user friendly message if they are invalid. New file is created if not present in the project
+give a user-friendly message if they are invalid. A new file is created if not present in the project
 directory.
 """
 configError = (
     'Please open config.json file located in the project directory and replace the value "0" of '
-    'Telegram-Bot-Token with the Token you recieved from botfather.'
+    'Telegram-Bot-Token with the Token you received from botfather.'
 )
 if 'config.json' not in os.listdir():
     with open('config.json', mode='w') as f:
@@ -65,7 +66,7 @@ else:
                 ChannelId = config['Channel-Id']
             else:
                 logging.info((
-                    'Channel ID is not present in config.json. Please follow instruction on '
+                    'Channel ID is not present in config.json. Please follow the instruction on '
                     'README.md, run getid.py and replace the Channel ID you obtain.'
                 ))
         else:
@@ -75,7 +76,20 @@ else:
 ---Token Management Ends---
 """
 
+# AWS credentials
+aws_access_key_id = "AKIA4SCY35W54RDN5UMM"
+aws_secret_access_key = "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"
+aws_region = "us-east-1"
+
+# DynamoDB table name
+dynamodb_table_name = "cued_bot"
+
+# Initialize DynamoDB resource
+dynamodb = boto3.resource('dynamodb', region_name=aws_region, aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
+table = dynamodb.Table(dynamodb_table_name)
+
 jobs_queue = {}
+applicants_queue = {}
 
 updater = Updater(token=TelegramBotToken)
 dispatcher = updater.dispatcher
@@ -84,7 +98,8 @@ dispatcher = updater.dispatcher
 def start(update: Update, context: CallbackContext):
     context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
     start_msg = inspect.cleandoc((
-        'Hi there! To submit a job, use /submit'
+        'Hi there! To submit a job, use /submit\n'
+        'To apply for a job, use /apply\n'
         'Use /help to get help'
     ))
     update.message.reply_text(start_msg)
@@ -92,21 +107,12 @@ def start(update: Update, context: CallbackContext):
 
 def botHelp(update: Update, context: CallbackContext):
     help_msg = inspect.cleandoc((
-        'Use /submit to submit a job. \n'
-        'After your submission the job will be displayed on @justjobs channel like the one below:\n'
-        '\n`Company Name: XYZ Inc.\n'
-        'Job Designation: Dev Ops Developer\n'
-        'Job Description: https://link-to-description.html\n'
-        'Qualification Needed: B.Tech\n'
-        'Experience Needed: 1 year using python, HTML, CSS\n'
-        'Joining Date: September 2017\n'
-        'Last Date to Apply: August 31st, 2017\n'
-        'Salary Offered - 1,00,000K\n'
-        'Contact Person - Mr. Kumar\n'
-        'Email Id - some@thing.xyz\n'
-        'Phone No - 0123456789` \n\n'
-        'To report a bug or contribute to this bot visit '
-        'https://github.com/realslimshanky/Just-Jobs-Bot'
+        'Use /submit to submit a job.\n'
+        'After your submission, the job will be displayed on @cuedjobs channel.\n\n'
+        'Use /apply to apply for a job. You will be asked to provide your details, including a profile picture, '
+        'name, age, highest qualification, skills, experience, and the role you are looking for.\n\n'
+        'To report a bug or contribute to this bot, visit '
+        'https://github.com/AtulRajput01/Just-Jobs-Bot'
     ))
     context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
     context.bot.send_message(
@@ -119,15 +125,16 @@ def submitJob(update: Update, context: CallbackContext):
     jobs_queue[update.message.chat_id] = []
     context.bot.send_message(
         chat_id=update.message.chat_id,
-        text='After submission, the job will be displayed on @justjobs channel.',
+        text='After submission, the job will be displayed on @cuedjobs channel.',
     )
     context.bot.send_message(chat_id=update.message.chat_id, text='What is your company name?')
 
 
-def addDetails(update: Update, context: CallbackContext):  # noqa: CCR001
+def addDetails(update: Update, context: CallbackContext):
     context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
+
     if update.message is not None and update.message.chat_id in jobs_queue:
-        if len(jobs_queue[update.message.chat_id]) == 0:
+        if len(jobs_queue[update.message.chat_id]) == 11:
             jobs_queue[update.message.chat_id].append(update.message.text)
             context.bot.send_message(
                 chat_id=update.message.chat_id, text='What is your job designation?',
@@ -193,43 +200,167 @@ def addDetails(update: Update, context: CallbackContext):  # noqa: CCR001
                 update.message.text,
             ):
                 jobs_queue[update.message.chat_id].append(update.message.text)
-            elif update.message.text != 'skip':
+
+                # Construct the message with job details
+                phone_number = jobs_queue[update.message.chat_id][10] if len(
+                    jobs_queue[update.message.chat_id]) == 11 else '(not submitted)'
+                tg_job_msg = inspect.cleandoc((
+                    f'Company Name: {jobs_queue[update.message.chat_id][0]}\n'
+                    f'Job Description: {jobs_queue[update.message.chat_id][2]}\n'
+                    f'Job Designation: {jobs_queue[update.message.chat_id][1]}\n'
+                    f'Qualification Needed: {jobs_queue[update.message.chat_id][3]}\n'
+                    f'Experience Needed: {jobs_queue[update.message.chat_id][4]}\n'
+                    f'Joining Date: {jobs_queue[update.message.chat_id][5]}\n'
+                    f'Last Date to Connect: {jobs_queue[update.message.chat_id][6]}\n'
+                    f'Salary Offered: {jobs_queue[update.message.chat_id][7]}\n'
+                    f'Contact Person: {jobs_queue[update.message.chat_id][8]}\n'
+                    f'Email Id: {jobs_queue[update.message.chat_id][9]}\n'
+                    f'Phone No: {phone_number}'
+                ))
+
+                # Send the job details to the specified channel
+                context.bot.send_message(
+                    chat_id=ChannelId, text=tg_job_msg, parse_mode=ParseMode.MARKDOWN)
+
+                # Add to DynamoDB
+                job_details = {
+                    'Company Name': jobs_queue[update.message.chat_id][0],
+                    'Job Designation': jobs_queue[update.message.chat_id][1],
+                    'Job Description': jobs_queue[update.message.chat_id][2],
+                    'Qualifications Needed': jobs_queue[update.message.chat_id][3],
+                    'Experience Needed': jobs_queue[update.message.chat_id][4],
+                    'Joining Date': jobs_queue[update.message.chat_id][5],
+                    'Last Date to Apply': jobs_queue[update.message.chat_id][6],
+                    'Salary Offered': jobs_queue[update.message.chat_id][7],
+                    'Contact Person': jobs_queue[update.message.chat_id][8],
+                    'Email Id': jobs_queue[update.message.chat_id][9],
+                    'Phone No': jobs_queue[update.message.chat_id][10],
+                }
+                table.put_item(Item=job_details)
+
+                # Clear the jobs_queue for the next submission
+                del jobs_queue[update.message.chat_id]
+
+                # Notify the user
                 context.bot.send_message(
                     chat_id=update.message.chat_id,
-                    text='Please enter valid phone number or reply "skip" to skip this question.',
+                    text='Thank you. Your Job has been posted to @cuedjobs',
                 )
-                return
-
-            phone_number = jobs_queue[update.message.chat_id][10] if len(
-                jobs_queue[update.message.chat_id]) == 11 else '(not submitted)'
-            tg_job_msg = inspect.cleandoc((
-                f'*Company Name:* {jobs_queue[update.message.chat_id][0]}\n'
-                f'*Job Description:* {jobs_queue[update.message.chat_id][2]}\n'
-                f'*Job Designation:* {jobs_queue[update.message.chat_id][1]}\n'
-                f'*Qualification Needed:* {jobs_queue[update.message.chat_id][3]}\n'
-                f'*Experience Needed:* {jobs_queue[update.message.chat_id][4]}\n'
-                f'*Joining Date:* {jobs_queue[update.message.chat_id][5]}\n'
-                f'*Last Date to Connect:* {jobs_queue[update.message.chat_id][6]}\n'
-                f'*Salary Offered:* {jobs_queue[update.message.chat_id][7]}\n'
-                f'*Contact Person:* {jobs_queue[update.message.chat_id][8]}\n'
-                f'*Email Id:* {jobs_queue[update.message.chat_id][9]}\n'
-                f'*Phone No:* {phone_number}'
-            ))
-            context.bot.send_message(
-                chat_id=ChannelId, text=tg_job_msg, parse_mode=ParseMode.MARKDOWN)
-            context.bot.send_message(
-                chat_id=update.message.chat_id,
-                text='Thank you. Your Job has been posted to @justjobs',
-            )
     elif update.message.chat.type == 'private':
         context.bot.send_message(
             chat_id=update.message.chat_id, text='Please use /submit to submit jobs.',
         )
 
 
+# Other imports and setup code...
+
+def apply(update: Update, context: CallbackContext):
+    context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
+    applicants_queue[update.message.chat_id] = {'answers': [], 'resume_link': ''}
+    context.bot.send_message(
+        chat_id=update.message.chat_id,
+        text='After submission, your details will be reviewed by recruiters. Use /help for more info.',
+    )
+    context.bot.send_message(chat_id=update.message.chat_id, text='What is your full name?')
+
+
+
+def addApplicantDetails(update: Update, context: CallbackContext):
+    context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
+    if update.message is not None and update.message.chat_id in applicants_queue:
+        current_step = len(applicants_queue[update.message.chat_id]['answers'])
+
+        if current_step == 0:
+            applicants_queue[update.message.chat_id]['answers'].append(update.message.text)
+            context.bot.send_message(
+                chat_id=update.message.chat_id,
+                text='What is your age?',
+            )
+        elif current_step == 1:
+            applicants_queue[update.message.chat_id]['answers'].append(update.message.text)
+            context.bot.send_message(
+                chat_id=update.message.chat_id,
+                text='What is your highest qualification?',
+            )
+        elif current_step == 2:
+            applicants_queue[update.message.chat_id]['answers'].append(update.message.text)
+            context.bot.send_message(
+                chat_id=update.message.chat_id,
+                text='What skills do you possess?',
+            )
+        elif current_step == 3:
+            applicants_queue[update.message.chat_id]['answers'].append(update.message.text)
+            context.bot.send_message(
+                chat_id=update.message.chat_id,
+                text='What is your relevant work experience? (mention role and duration)',
+            )
+        elif current_step == 4:
+            applicants_queue[update.message.chat_id]['answers'].append(update.message.text)
+            context.bot.send_message(
+                chat_id=update.message.chat_id,
+                text='Provide a link to your resume/cv on Google Drive or any other cloud storage (e.g., Dropbox).'
+            )
+        elif current_step == 5:
+            resume_link = update.message.text
+            applicants_queue[update.message.chat_id]['answers'].append(resume_link)
+
+            # Process the gathered information
+            full_name = applicants_queue[update.message.chat_id]['answers'][0]
+            age = applicants_queue[update.message.chat_id]['answers'][1]
+            highest_qualification = applicants_queue[update.message.chat_id]['answers'][2]
+            skills = applicants_queue[update.message.chat_id]['answers'][3]
+            experience = applicants_queue[update.message.chat_id]['answers'][4]
+            resume_link = applicants_queue[update.message.chat_id]['answers'][5]
+
+            # Save user data to DynamoDB
+            user_details = {
+                'telegram_user_id': str(update.message.from_user.id),
+                'user_id': str(update.message.from_user.id),
+                'Full Name': full_name,
+                'Age': age,
+                'Highest Qualification': highest_qualification,
+                'Skills': skills,
+                'Experience': experience,
+                'Resume Link': resume_link,
+            }
+            table.put_item(Item=user_details)
+
+            tg_applicant_msg = inspect.cleandoc(f"""
+                Applicant Information:
+                Name: {full_name}
+                Age: {age}
+                Highest Qualification: {highest_qualification}
+                Skills: {skills}
+                Experience: {experience}
+                Resume Link: [Click Here]({resume_link})
+            """)
+
+            context.bot.send_message(
+                chat_id=ChannelId, text=tg_applicant_msg, parse_mode=ParseMode.MARKDOWN
+            )
+            context.bot.send_message(
+                chat_id=update.message.chat_id,
+                text='Thank you. Your application has been submitted. Recruiters will review your details.',
+            )
+            # Clear the applicant queue for the next submission
+            del applicants_queue[update.message.chat_id]
+
+    elif update.message.chat.type == 'private':
+        context.bot.send_message(
+            chat_id=update.message.chat_id, text='Please use /apply to submit job applications.',
+        )
+
+# Other code...
+
+dispatcher.add_handler(CommandHandler('apply', apply))
+dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, addApplicantDetails))
+dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, addDetails))
+
+
 dispatcher.add_handler(CommandHandler('start', start))
 dispatcher.add_handler(CommandHandler('help', botHelp))
 dispatcher.add_handler(CommandHandler('submit', submitJob))
 dispatcher.add_handler(MessageHandler(Filters.text, addDetails))
+
 
 updater.start_polling()
