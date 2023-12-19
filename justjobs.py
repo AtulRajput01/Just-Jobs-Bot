@@ -76,18 +76,6 @@ else:
 ---Token Management Ends---
 """
 
-# AWS credentials
-aws_access_key_id = "AKIA4SCY35W54RDN5UMM"
-aws_secret_access_key = "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"
-aws_region = "us-east-1"
-
-# DynamoDB table name
-dynamodb_table_name = "cued_bot"
-
-# Initialize DynamoDB resource
-dynamodb = boto3.resource('dynamodb', region_name=aws_region, aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
-table = dynamodb.Table(dynamodb_table_name)
-
 jobs_queue = {}
 applicants_queue = {}
 
@@ -118,6 +106,19 @@ def botHelp(update: Update, context: CallbackContext):
     context.bot.send_message(
         chat_id=update.message.chat_id, parse_mode=ParseMode.MARKDOWN, text=help_msg,
     )
+
+
+# AWS credentials
+aws_access_key_id = "AKIA4SCY35W54RDN5UMM"
+aws_secret_access_key = "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"
+aws_region = "us-east-1"
+
+# DynamoDB table name
+dynamodb_table_name = "cued_bot2"
+
+# Initialize DynamoDB resource
+dynamodb = boto3.resource('dynamodb', region_name=aws_region, aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
+table = dynamodb.Table(dynamodb_table_name)
 
 
 def submitJob(update: Update, context: CallbackContext):
@@ -222,8 +223,12 @@ def addDetails(update: Update, context: CallbackContext):
                 context.bot.send_message(
                     chat_id=ChannelId, text=tg_job_msg, parse_mode=ParseMode.MARKDOWN)
 
-                # Add to DynamoDB
+                # Add to DynamoDB for recruiters
+                recruiter_id = str(update.message.from_user.id)
+                user_id = str(update.message.from_user.id)
                 job_details = {
+                    'recruiter_id': recruiter_id,
+                    'user_id': user_id,
                     'Company Name': jobs_queue[update.message.chat_id][0],
                     'Job Designation': jobs_queue[update.message.chat_id][1],
                     'Job Description': jobs_queue[update.message.chat_id][2],
@@ -236,7 +241,7 @@ def addDetails(update: Update, context: CallbackContext):
                     'Email Id': jobs_queue[update.message.chat_id][9],
                     'Phone No': jobs_queue[update.message.chat_id][10],
                 }
-                table.put_item(Item=job_details)
+                recruiter_table.put_item(Item=job_details)
 
                 # Clear the jobs_queue for the next submission
                 del jobs_queue[update.message.chat_id]
@@ -251,8 +256,20 @@ def addDetails(update: Update, context: CallbackContext):
             chat_id=update.message.chat_id, text='Please use /submit to submit jobs.',
         )
 
-
 # Other imports and setup code...
+
+# AWS credentials
+aws_access_key_id = "AKIA4SCY35W54RDN5UMM"
+aws_secret_access_key = "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"
+aws_region = "us-east-1"
+
+# DynamoDB table name
+dynamodb_table_name = "cued_bot"
+
+# Initialize DynamoDB resource
+dynamodb = boto3.resource('dynamodb', region_name=aws_region, aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
+table = dynamodb.Table(dynamodb_table_name)
+
 
 def apply(update: Update, context: CallbackContext):
     context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
