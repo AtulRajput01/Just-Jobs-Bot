@@ -7,6 +7,8 @@ import signal
 import subprocess
 import sys
 import boto3
+import uuid
+
 
 from telegram import ChatAction, ParseMode, Update
 from telegram.ext import (CallbackContext, CommandHandler, Filters,
@@ -281,7 +283,6 @@ def apply(update: Update, context: CallbackContext):
     context.bot.send_message(chat_id=update.message.chat_id, text='What is your full name?')
 
 
-
 def addApplicantDetails(update: Update, context: CallbackContext):
     context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
     if update.message is not None and update.message.chat_id in applicants_queue:
@@ -318,8 +319,14 @@ def addApplicantDetails(update: Update, context: CallbackContext):
                 text='Provide a link to your resume/cv on Google Drive or any other cloud storage (e.g., Dropbox).'
             )
         elif current_step == 5:
-            resume_link = update.message.text
-            applicants_queue[update.message.chat_id]['answers'].append(resume_link)
+            applicants_queue[update.message.chat_id]['answers'].append(update.message.text)
+            context.bot.send_message(
+                chat_id=update.message.chat_id,
+                text='Provide a link to your LinkedIn profile.'
+            )
+        elif current_step == 6:
+            linkedin_profile = update.message.text
+            applicants_queue[update.message.chat_id]['answers'].append(linkedin_profile)
 
             # Process the gathered information
             full_name = applicants_queue[update.message.chat_id]['answers'][0]
@@ -328,6 +335,7 @@ def addApplicantDetails(update: Update, context: CallbackContext):
             skills = applicants_queue[update.message.chat_id]['answers'][3]
             experience = applicants_queue[update.message.chat_id]['answers'][4]
             resume_link = applicants_queue[update.message.chat_id]['answers'][5]
+            linkedin_profile = applicants_queue[update.message.chat_id]['answers'][6]
 
             # Save user data to DynamoDB
             user_details = {
@@ -339,6 +347,7 @@ def addApplicantDetails(update: Update, context: CallbackContext):
                 'Skills': skills,
                 'Experience': experience,
                 'Resume Link': resume_link,
+                'LinkedIn Profile': linkedin_profile,
             }
             table.put_item(Item=user_details)
 
@@ -350,6 +359,7 @@ def addApplicantDetails(update: Update, context: CallbackContext):
                 Skills: {skills}
                 Experience: {experience}
                 Resume Link: [Click Here]({resume_link})
+                LinkedIn Profile: [Click Here]({linkedin_profile})
             """)
 
             context.bot.send_message(
