@@ -41,7 +41,7 @@ else:
         print(str(currentPID), file=f)
 """
 ---Process ID Management Ends---
-"""
+""" 
 
 """
 ---Token Management Starts---
@@ -78,8 +78,11 @@ else:
 ---Token Management Ends---
 """
 
+USER_STATES = {}
 jobs_queue = {}
 applicants_queue = {}
+recruiters_queue = {}
+
 
 updater = Updater(token=TelegramBotToken)
 dispatcher = updater.dispatcher
@@ -88,193 +91,33 @@ dispatcher = updater.dispatcher
 def start(update: Update, context: CallbackContext):
     context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
     start_msg = inspect.cleandoc((
-        'Hi there! To submit a job, use /submit\n'
-        'To apply for a job, use /apply\n'
-        'Use /help to get help'
+        'Hi there! Are you an *Applicant* or a *Recruiter*?\n'
+        'Use /apply if you are an Applicant, and /recruit if you are a Recruiter.\n'
+        'Use /help to get more information.'
     ))
-    update.message.reply_text(start_msg)
+    update.message.reply_text(start_msg, parse_mode=ParseMode.MARKDOWN)
 
-
-def botHelp(update: Update, context: CallbackContext):
-    help_msg = inspect.cleandoc((
-        'Use /submit to submit a job.\n'
-        'After your submission, the job will be displayed on @cuedjobs channel.\n\n'
-        'Use /apply to apply for a job. You will be asked to provide your details, including a profile picture, '
-        'name, age, highest qualification, skills, experience, and the role you are looking for.\n\n'
-        'To report a bug or contribute to this bot, visit '
-        'https://github.com/AtulRajput01/Just-Jobs-Bot'
-    ))
-    context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
-    context.bot.send_message(
-        chat_id=update.message.chat_id, parse_mode=ParseMode.MARKDOWN, text=help_msg,
-    )
-
-
-# AWS credentials
-aws_access_key_id = "AKIA4SCY35W54RDN5UMM"
-aws_secret_access_key = "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"
-aws_region = "us-east-1"
-
-# DynamoDB table name
-dynamodb_table_name = "cued_bot2"
-
-# Initialize DynamoDB resource
-dynamodb = boto3.resource('dynamodb', region_name=aws_region, aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
-table = dynamodb.Table(dynamodb_table_name)
-
-
-def submitJob(update: Update, context: CallbackContext):
-    context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
-    jobs_queue[update.message.chat_id] = []
-    context.bot.send_message(
-        chat_id=update.message.chat_id,
-        text='After submission, the job will be displayed on @cuedjobs channel.',
-    )
-    context.bot.send_message(chat_id=update.message.chat_id, text='What is your company name?')
-
-
-def addDetails(update: Update, context: CallbackContext):
+def chooseProfile(update: Update, context: CallbackContext):
     context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
 
-    if update.message is not None and update.message.chat_id in jobs_queue:
-        if len(jobs_queue[update.message.chat_id]) == 11:
-            jobs_queue[update.message.chat_id].append(update.message.text)
-            context.bot.send_message(
-                chat_id=update.message.chat_id, text='What is your job designation?',
-            )
-        elif len(jobs_queue[update.message.chat_id]) == 1:
-            jobs_queue[update.message.chat_id].append(update.message.text)
-            context.bot.send_message(
-                chat_id=update.message.chat_id, text='What is your job description?',
-            )
-        elif len(jobs_queue[update.message.chat_id]) == 2:
-            jobs_queue[update.message.chat_id].append(update.message.text)
-            context.bot.send_message(
-                chat_id=update.message.chat_id, text='What are the qualifications needed?',
-            )
-        elif len(jobs_queue[update.message.chat_id]) == 3:
-            jobs_queue[update.message.chat_id].append(update.message.text)
-            context.bot.send_message(
-                chat_id=update.message.chat_id, text='What is the experience needed?',
-            )
-        elif len(jobs_queue[update.message.chat_id]) == 4:
-            jobs_queue[update.message.chat_id].append(update.message.text)
-            context.bot.send_message(
-                chat_id=update.message.chat_id, text='What is the joining date?',
-            )
-        elif len(jobs_queue[update.message.chat_id]) == 5:
-            jobs_queue[update.message.chat_id].append(update.message.text)
-            context.bot.send_message(
-                chat_id=update.message.chat_id, text='What is the last date to apply?',
-            )
-        elif len(jobs_queue[update.message.chat_id]) == 6:
-            jobs_queue[update.message.chat_id].append(update.message.text)
-            context.bot.send_message(
-                chat_id=update.message.chat_id, text='What is the salary offered?',
-            )
-        elif len(jobs_queue[update.message.chat_id]) == 7:
-            jobs_queue[update.message.chat_id].append(update.message.text)
-            context.bot.send_message(
-                chat_id=update.message.chat_id, text='Who is the contact person?',
-            )
-        elif len(jobs_queue[update.message.chat_id]) == 8:
-            jobs_queue[update.message.chat_id].append(update.message.text)
-            context.bot.send_message(chat_id=update.message.chat_id, text='What is your email id?')
-        elif len(jobs_queue[update.message.chat_id]) == 9:
-            if re.fullmatch(
-                r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', update.message.text,
-            ):
-                jobs_queue[update.message.chat_id].append(update.message.text)
-                context.bot.send_message(
-                    chat_id=update.message.chat_id,
-                    text='What is your phone number? (reply "skip" to skip this question)',
-                )
-            else:
-                context.bot.send_message(
-                    chat_id=update.message.chat_id, text='Please enter a valid email address.',
-                )
-        elif len(jobs_queue[update.message.chat_id]) == 10:
-            PHONE_NO_REGEX = (
-                r'(\d{3}[-\.\s]??\d{3}[-\.\s]??\d{4}|\(\d{3}\)\s*\d{3}[-\.\s]??\d{4}|\d{3}[-\.\s]??'
-                r'\d{4})'
-            )
-            if re.fullmatch(
-                PHONE_NO_REGEX,
-                update.message.text,
-            ):
-                jobs_queue[update.message.chat_id].append(update.message.text)
-
-                # Construct the message with job details
-                phone_number = jobs_queue[update.message.chat_id][10] if len(
-                    jobs_queue[update.message.chat_id]) == 11 else '(not submitted)'
-                tg_job_msg = inspect.cleandoc((
-                    f'Company Name: {jobs_queue[update.message.chat_id][0]}\n'
-                    f'Job Description: {jobs_queue[update.message.chat_id][2]}\n'
-                    f'Job Designation: {jobs_queue[update.message.chat_id][1]}\n'
-                    f'Qualification Needed: {jobs_queue[update.message.chat_id][3]}\n'
-                    f'Experience Needed: {jobs_queue[update.message.chat_id][4]}\n'
-                    f'Joining Date: {jobs_queue[update.message.chat_id][5]}\n'
-                    f'Last Date to Connect: {jobs_queue[update.message.chat_id][6]}\n'
-                    f'Salary Offered: {jobs_queue[update.message.chat_id][7]}\n'
-                    f'Contact Person: {jobs_queue[update.message.chat_id][8]}\n'
-                    f'Email Id: {jobs_queue[update.message.chat_id][9]}\n'
-                    f'Phone No: {phone_number}'
-                ))
-
-                # Send the job details to the specified channel
-                context.bot.send_message(
-                    chat_id=ChannelId, text=tg_job_msg, parse_mode=ParseMode.MARKDOWN)
-
-                # Add to DynamoDB for recruiters
-                recruiter_id = str(update.message.from_user.id)
-                user_id = str(update.message.from_user.id)
-                job_details = {
-                    'recruiter_id': recruiter_id,
-                    'user_id': user_id,
-                    'Company Name': jobs_queue[update.message.chat_id][0],
-                    'Job Designation': jobs_queue[update.message.chat_id][1],
-                    'Job Description': jobs_queue[update.message.chat_id][2],
-                    'Qualifications Needed': jobs_queue[update.message.chat_id][3],
-                    'Experience Needed': jobs_queue[update.message.chat_id][4],
-                    'Joining Date': jobs_queue[update.message.chat_id][5],
-                    'Last Date to Apply': jobs_queue[update.message.chat_id][6],
-                    'Salary Offered': jobs_queue[update.message.chat_id][7],
-                    'Contact Person': jobs_queue[update.message.chat_id][8],
-                    'Email Id': jobs_queue[update.message.chat_id][9],
-                    'Phone No': jobs_queue[update.message.chat_id][10],
-                }
-                recruiter_table.put_item(Item=job_details)
-
-                # Clear the jobs_queue for the next submission
-                del jobs_queue[update.message.chat_id]
-
-                # Notify the user
-                context.bot.send_message(
-                    chat_id=update.message.chat_id,
-                    text='Thank you. Your Job has been posted to @cuedjobs',
-                )
-    elif update.message.chat.type == 'private':
+    user_choice = update.message.text.lower()
+    if user_choice == 'applicant':
+        apply(update, context)
+    elif user_choice == 'recruiter':
+        # You can add your logic for handling recruiter subscription or any other actions here
         context.bot.send_message(
-            chat_id=update.message.chat_id, text='Please use /submit to submit jobs.',
+            chat_id=update.message.chat_id,
+            text='To access recruiter features, please subscribe to our premium service.',
         )
-
-# Other imports and setup code...
-
-# AWS credentials
-aws_access_key_id = "AKIA4SCY35W54RDN5UMM"
-aws_secret_access_key = "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"
-aws_region = "us-east-1"
-
-# DynamoDB table name
-dynamodb_table_name = "cued_bot"
-
-# Initialize DynamoDB resource
-dynamodb = boto3.resource('dynamodb', region_name=aws_region, aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
-table = dynamodb.Table(dynamodb_table_name)
-
-
+    else:
+        context.bot.send_message(
+            chat_id=update.message.chat_id,
+            text='Invalid choice. Please select either *Applicant* or *Recruiter*.',
+            parse_mode=ParseMode.MARKDOWN,
+        )
 def apply(update: Update, context: CallbackContext):
     context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
+    USER_STATES[update.message.chat_id] = 'apply'
     applicants_queue[update.message.chat_id] = {'answers': [], 'resume_link': ''}
     context.bot.send_message(
         chat_id=update.message.chat_id,
@@ -282,112 +125,243 @@ def apply(update: Update, context: CallbackContext):
     )
     context.bot.send_message(chat_id=update.message.chat_id, text='What is your full name?')
 
+def recruit(update: Update, context: CallbackContext):
+    context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
+    USER_STATES[update.message.chat_id] = 'recruit'
+    if update.message.chat_id not in recruiters_queue:
+        recruiters_queue[update.message.chat_id] = {'details': []}
 
+    context.bot.send_message(
+        chat_id=update.message.chat_id,
+        text='After submission, the job will be displayed on @cuedjobs channel.',
+    )
+
+    if USER_STATES.get(update.message.chat_id) == 'recruit':
+        context.bot.send_message(chat_id=update.message.chat_id, text='What is your company name?')
+    elif USER_STATES.get(update.message.chat_id) == 'apply':
+        context.bot.send_message(chat_id=update.message.chat_id, text='What is your full name?')
+
+
+# AWS credentials
+aws_access_key_id = "AKIA4SCY35W54RDN5UMM"
+aws_secret_access_key = "1Eefk+e9afbi9nmnB1IsfcXPsnI7mon1xXBDfv1U"
+aws_region = "us-east-1"
+
+# DynamoDB table name for recruiters
+dynamodb_table_name_recruiter = "cued_bot2"
+
+# DynamoDB table name for applicants
+dynamodb_table_name_applicant = "cued_bot"
+
+# Initialize DynamoDB resource
+dynamodb = boto3.resource('dynamodb', region_name=aws_region, aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
+table_recruiter = dynamodb.Table(dynamodb_table_name_recruiter)
+table_applicant = dynamodb.Table(dynamodb_table_name_applicant)
+
+def apply(update: Update, context: CallbackContext):
+    context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
+    USER_STATES[update.message.chat_id] = 'apply'
+    applicants_queue[update.message.chat_id] = {'answers': [], 'resume_link': ''}
+    context.bot.send_message(
+        chat_id=update.message.chat_id,
+        text='After submission, your details will be reviewed by recruiters. Use /help for more info.',
+    )
+    context.bot.send_message(chat_id=update.message.chat_id, text='What is your full name?')
+
+def recruit(update: Update, context: CallbackContext):
+    context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
+    USER_STATES[update.message.chat_id] = 'recruit'
+    recruiters_queue[update.message.chat_id] = {'details': []}
+
+    context.bot.send_message(
+        chat_id=update.message.chat_id,
+        text='After submission, the job will be displayed on @cuedjobs channel.',
+    )
+
+    context.bot.send_message(chat_id=update.message.chat_id, text='What is your company name?')
+
+def recruitersDetails(update: Update, context: CallbackContext):
+    context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
+
+    user_state = USER_STATES.get(update.message.chat_id)
+
+    if user_state == 'recruit':
+        if update.message is not None and update.message.chat_id in recruiters_queue:
+            current_step = len(recruiters_queue[update.message.chat_id]['details'])
+
+            if current_step == 0:
+                recruiters_queue[update.message.chat_id]['details'].append(update.message.text)
+                context.bot.send_message(
+                    chat_id=update.message.chat_id,
+                    text='Which specific role are you looking to fill?',
+                )
+            elif current_step == 1:
+                recruiters_queue[update.message.chat_id]['details'].append(update.message.text)
+                context.bot.send_message(
+                    chat_id=update.message.chat_id,
+                    text='Could you provide a contact email for communication?',
+                )
+            elif current_step == 2:
+                recruiters_queue[update.message.chat_id]['details'].append(update.message.text)
+                context.bot.send_message(
+                    chat_id=update.message.chat_id,
+                    text='What is the budget or salary range for this position?',
+                )
+            elif current_step == 3:
+                recruiters_queue[update.message.chat_id]['details'].append(update.message.text)
+
+                # Process the gathered information
+                company_name = recruiters_queue[update.message.chat_id]['details'][0]
+                job_role = recruiters_queue[update.message.chat_id]['details'][1]
+                contact_email = recruiters_queue[update.message.chat_id]['details'][2]
+                salary_range = recruiters_queue[update.message.chat_id]['details'][3]
+
+                # Save recruiter data to DynamoDB
+                recruiter_details = {
+                    'telegram_user_id': str(update.message.from_user.id),
+                    'user_id': str(update.message.from_user.id),
+                    'Company Name': company_name,
+                    'Job Role': job_role,
+                    'Contact Email': contact_email,
+                    'Salary Range': salary_range,
+                }
+                table_recruiter.put_item(Item=recruiter_details)
+
+                tg_recruiter_msg = inspect.cleandoc(f"""
+                    Recruiter Information:
+                    Company Name: {company_name}
+                    Job Role: {job_role}
+                    Contact Email: {contact_email}
+                    Salary Range: {salary_range}
+                """)
+
+                context.bot.send_message(
+                    chat_id=ChannelId, text=tg_recruiter_msg, parse_mode=ParseMode.MARKDOWN
+                )
+                context.bot.send_message(
+                    chat_id=update.message.chat_id,
+                    text='Thank you. Your details have been submitted. The job will be displayed on @cuedjobs.',
+                )
+                # Clear the recruiters_queue for the next submission
+                del recruiters_queue[update.message.chat_id]
+
+        elif update.message.chat.type == 'private':
+            context.bot.send_message(
+                chat_id=update.message.chat_id, text='Please use /recruit to submit job details.',
+            )
+    else:
+        context.bot.send_message(
+            chat_id=update.message.chat_id, text='Please use /recruit to submit job details.',
+        )
+        
 def addApplicantDetails(update: Update, context: CallbackContext):
     context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
-    if update.message is not None and update.message.chat_id in applicants_queue:
-        current_step = len(applicants_queue[update.message.chat_id]['answers'])
 
-        if current_step == 0:
-            applicants_queue[update.message.chat_id]['answers'].append(update.message.text)
-            context.bot.send_message(
-                chat_id=update.message.chat_id,
-                text='What is your age?',
-            )
-        elif current_step == 1:
-            applicants_queue[update.message.chat_id]['answers'].append(update.message.text)
-            context.bot.send_message(
-                chat_id=update.message.chat_id,
-                text='What is your highest qualification?',
-            )
-        elif current_step == 2:
-            applicants_queue[update.message.chat_id]['answers'].append(update.message.text)
-            context.bot.send_message(
-                chat_id=update.message.chat_id,
-                text='What skills do you possess?',
-            )
-        elif current_step == 3:
-            applicants_queue[update.message.chat_id]['answers'].append(update.message.text)
-            context.bot.send_message(
-                chat_id=update.message.chat_id,
-                text='What is your relevant work experience? (mention role and duration)',
-            )
-        elif current_step == 4:
-            applicants_queue[update.message.chat_id]['answers'].append(update.message.text)
-            context.bot.send_message(
-                chat_id=update.message.chat_id,
-                text='Provide a link to your resume/cv on Google Drive or any other cloud storage (e.g., Dropbox).'
-            )
-        elif current_step == 5:
-            applicants_queue[update.message.chat_id]['answers'].append(update.message.text)
-            context.bot.send_message(
-                chat_id=update.message.chat_id,
-                text='Provide a link to your LinkedIn profile.'
-            )
-        elif current_step == 6:
-            linkedin_profile = update.message.text
-            applicants_queue[update.message.chat_id]['answers'].append(linkedin_profile)
+    user_state = USER_STATES.get(update.message.chat_id)
 
-            # Process the gathered information
-            full_name = applicants_queue[update.message.chat_id]['answers'][0]
-            age = applicants_queue[update.message.chat_id]['answers'][1]
-            highest_qualification = applicants_queue[update.message.chat_id]['answers'][2]
-            skills = applicants_queue[update.message.chat_id]['answers'][3]
-            experience = applicants_queue[update.message.chat_id]['answers'][4]
-            resume_link = applicants_queue[update.message.chat_id]['answers'][5]
-            linkedin_profile = applicants_queue[update.message.chat_id]['answers'][6]
+    if user_state == 'apply':
+        if update.message is not None and update.message.chat_id in applicants_queue:
+            current_step = len(applicants_queue[update.message.chat_id]['answers'])
 
-            # Save user data to DynamoDB
-            user_details = {
-                'telegram_user_id': str(update.message.from_user.id),
-                'user_id': str(update.message.from_user.id),
-                'Full Name': full_name,
-                'Age': age,
-                'Highest Qualification': highest_qualification,
-                'Skills': skills,
-                'Experience': experience,
-                'Resume Link': resume_link,
-                'LinkedIn Profile': linkedin_profile,
-            }
-            table.put_item(Item=user_details)
+            if current_step == 0:
+                applicants_queue[update.message.chat_id]['answers'].append(update.message.text)
+                context.bot.send_message(
+                    chat_id=update.message.chat_id,
+                    text='What is your age?',
+                )
+            elif current_step == 1:
+                applicants_queue[update.message.chat_id]['answers'].append(update.message.text)
+                context.bot.send_message(
+                    chat_id=update.message.chat_id,
+                    text='What is your highest qualification?',
+                )
+            elif current_step == 2:
+                applicants_queue[update.message.chat_id]['answers'].append(update.message.text)
+                context.bot.send_message(
+                    chat_id=update.message.chat_id,
+                    text='What skills do you possess?',
+                )
+            elif current_step == 3:
+                applicants_queue[update.message.chat_id]['answers'].append(update.message.text)
+                context.bot.send_message(
+                    chat_id=update.message.chat_id,
+                    text='What is your relevant work experience? (mention role and duration)',
+                )
+            elif current_step == 4:
+                applicants_queue[update.message.chat_id]['answers'].append(update.message.text)
+                context.bot.send_message(
+                    chat_id=update.message.chat_id,
+                    text='Provide a link to your resume/cv on Google Drive or any other cloud storage (e.g., Dropbox).'
+                )
+            elif current_step == 5:
+                applicants_queue[update.message.chat_id]['answers'].append(update.message.text)
+                context.bot.send_message(
+                    chat_id=update.message.chat_id,
+                    text='Provide a link to your LinkedIn profile.'
+                )
+            elif current_step == 6:
+                applicants_queue[update.message.chat_id]['answers'].append(update.message.text)
 
-            tg_applicant_msg = inspect.cleandoc(f"""
-                Applicant Information:
-                Name: {full_name}
-                Age: {age}
-                Highest Qualification: {highest_qualification}
-                Skills: {skills}
-                Experience: {experience}
-                Resume Link: [Click Here]({resume_link})
-                LinkedIn Profile: [Click Here]({linkedin_profile})
-            """)
+                # Process the gathered information
+                full_name = applicants_queue[update.message.chat_id]['answers'][0]
+                age = applicants_queue[update.message.chat_id]['answers'][1]
+                highest_qualification = applicants_queue[update.message.chat_id]['answers'][2]
+                skills = applicants_queue[update.message.chat_id]['answers'][3]
+                experience = applicants_queue[update.message.chat_id]['answers'][4]
+                resume_link = applicants_queue[update.message.chat_id]['answers'][5]
+                linkedin_profile = applicants_queue[update.message.chat_id]['answers'][6]
 
+                # Save user data to DynamoDB
+                user_details = {
+                    'telegram_user_id': str(update.message.from_user.id),
+                    'user_id': str(update.message.from_user.id),
+                    'Full Name': full_name,
+                    'Age': age,
+                    'Highest Qualification': highest_qualification,
+                    'Skills': skills,
+                    'Experience': experience,
+                    'Resume Link': resume_link,
+                    'LinkedIn Profile': linkedin_profile,
+                }
+                table_applicant.put_item(Item=user_details)
+
+                tg_applicant_msg = inspect.cleandoc(f"""
+                    Applicant Information:
+                    Name: {full_name}
+                    Age: {age}
+                    Highest Qualification: {highest_qualification}
+                    Skills: {skills}
+                    Experience: {experience}
+                    Resume Link: [Click Here]({resume_link})
+                    LinkedIn Profile: [Click Here]({linkedin_profile})
+                """)
+
+                context.bot.send_message(
+                    chat_id=ChannelId, text=tg_applicant_msg, parse_mode=ParseMode.MARKDOWN
+                )
+                context.bot.send_message(
+                    chat_id=update.message.chat_id,
+                    text='Thank you. Your application has been submitted. Recruiters will review your details.',
+                )
+                # Clear the applicant queue for the next submission
+                del applicants_queue[update.message.chat_id]
+
+        elif update.message.chat.type == 'private':
             context.bot.send_message(
-                chat_id=ChannelId, text=tg_applicant_msg, parse_mode=ParseMode.MARKDOWN
+                chat_id=update.message.chat_id, text='Please use /apply to submit job applications.',
             )
-            context.bot.send_message(
-                chat_id=update.message.chat_id,
-                text='Thank you. Your application has been submitted. Recruiters will review your details.',
-            )
-            # Clear the applicant queue for the next submission
-            del applicants_queue[update.message.chat_id]
 
-    elif update.message.chat.type == 'private':
-        context.bot.send_message(
-            chat_id=update.message.chat_id, text='Please use /apply to submit job applications.',
-        )
+# Other code...
 
 # Other code...
 
 dispatcher.add_handler(CommandHandler('apply', apply))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, addApplicantDetails))
-dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, addDetails))
-
-
 dispatcher.add_handler(CommandHandler('start', start))
-dispatcher.add_handler(CommandHandler('help', botHelp))
-dispatcher.add_handler(CommandHandler('submit', submitJob))
-dispatcher.add_handler(MessageHandler(Filters.text, addDetails))
+#dispatcher.add_handler(CommandHandler('help', botHelp))
+dispatcher.add_handler(CommandHandler('recruit', recruit))  # Added recruit command
+dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, recruitersDetails))  # Changed addDetails to recruitersDetails
 
+updater.start_polling()
 
 updater.start_polling()
