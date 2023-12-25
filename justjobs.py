@@ -158,16 +158,6 @@ dynamodb = boto3.resource('dynamodb', region_name=aws_region, aws_access_key_id=
 table_recruiter = dynamodb.Table(dynamodb_table_name_recruiter)
 table_applicant = dynamodb.Table(dynamodb_table_name_applicant)
 
-def apply(update: Update, context: CallbackContext):
-    context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
-    USER_STATES[update.message.chat_id] = 'apply'
-    applicants_queue[update.message.chat_id] = {'answers': [], 'resume_link': ''}
-    context.bot.send_message(
-        chat_id=update.message.chat_id,
-        text='After submission, your details will be reviewed by recruiters. Use /help for more info.',
-    )
-    context.bot.send_message(chat_id=update.message.chat_id, text='What is your full name?')
-
 def recruit(update: Update, context: CallbackContext):
     context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
     USER_STATES[update.message.chat_id] = 'recruit'
@@ -179,6 +169,8 @@ def recruit(update: Update, context: CallbackContext):
     )
 
     context.bot.send_message(chat_id=update.message.chat_id, text='What is your company name?')
+
+# ... (previous code)
 
 def recruitersDetails(update: Update, context: CallbackContext):
     context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
@@ -253,11 +245,23 @@ def recruitersDetails(update: Update, context: CallbackContext):
         context.bot.send_message(
             chat_id=update.message.chat_id, text='Please use /recruit to submit job details.',
         )
+
         
+def apply(update: Update, context: CallbackContext):
+    context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
+    USER_STATES[update.message.chat_id] = 'apply'
+    if update.message.chat_id not in applicants_queue:
+        applicants_queue[update.message.chat_id] = {'answers': [], 'resume_link': ''}
+    context.bot.send_message(
+        chat_id=update.message.chat_id,
+        text='After submission, your details will be reviewed by recruiters. Use /help for more info.',
+    )
+    context.bot.send_message(chat_id=update.message.chat_id, text='What is your full name?')
+
 def addApplicantDetails(update: Update, context: CallbackContext):
     context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
 
-    user_state = USER_STATES.get(update.message.chat_id)
+    user_state = USER_STATES.get(update.message.chat_id, None)
 
     if user_state == 'apply':
         if update.message is not None and update.message.chat_id in applicants_queue:
@@ -350,8 +354,10 @@ def addApplicantDetails(update: Update, context: CallbackContext):
             context.bot.send_message(
                 chat_id=update.message.chat_id, text='Please use /apply to submit job applications.',
             )
-
-# Other code...
+    else:
+        context.bot.send_message(
+            chat_id=update.message.chat_id, text='Please use /apply to submit job applications.',
+        )
 
 # Other code...
 
@@ -359,9 +365,11 @@ dispatcher.add_handler(CommandHandler('apply', apply))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, addApplicantDetails))
 dispatcher.add_handler(CommandHandler('start', start))
 #dispatcher.add_handler(CommandHandler('help', botHelp))
-dispatcher.add_handler(CommandHandler('recruit', recruit))  # Added recruit command
-dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, recruitersDetails))  # Changed addDetails to recruitersDetails
+# Remove the existing recruit handler
+dispatcher.remove_handler(MessageHandler(Filters.text & ~Filters.command, recruit))
 
-updater.start_polling()
+# Add the updated recruitersDetails handler
+dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, recruitersDetails))
+
 
 updater.start_polling()
