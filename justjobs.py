@@ -365,10 +365,7 @@ dispatcher.add_handler(CommandHandler('apply', apply))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, addApplicantDetails))
 dispatcher.add_handler(CommandHandler('start', start))
 #dispatcher.add_handler(CommandHandler('help', botHelp))
-# Remove the existing recruit handler
 dispatcher.remove_handler(MessageHandler(Filters.text & ~Filters.command, recruit))
-
-# Add the updated recruitersDetails handler
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, recruitersDetails))
 
 
