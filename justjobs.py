@@ -359,7 +359,6 @@ def addApplicantDetails(update: Update, context: CallbackContext):
             chat_id=update.message.chat_id, text='Please use /apply to submit job applications.',
         )
 
-# Other code...
 
 dispatcher.add_handler(CommandHandler('apply', apply))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, addApplicantDetails))
