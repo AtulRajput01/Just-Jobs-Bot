@@ -9,7 +9,7 @@ import sys
 import boto3
 import uuid
 
-
+from telegram import ReplyKeyboardMarkup
 from telegram import ChatAction, ParseMode, Update
 from telegram.ext import (CallbackContext, CommandHandler, Filters,
                           MessageHandler, Updater)
@@ -34,7 +34,7 @@ else:
     with open('pid', mode='r') as f:
         try:
             os.kill(int(f.read()), signal.SIGTERM)
-            logging.info(f'Terminating the previous instance of {os.path.realpath(_file_)}')
+            logging.info(f'Terminating the previous instance of {os.path.realpath(__file__)}')
         except (ProcessLookupError, ValueError):
             subprocess.run(['rm', 'pid'])
     with open('pid', mode='w') as f:
@@ -88,6 +88,7 @@ updater = Updater(token=TelegramBotToken)
 dispatcher = updater.dispatcher
 
 
+
 def start(update: Update, context: CallbackContext):
     context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
     start_msg = inspect.cleandoc((
@@ -95,8 +96,12 @@ def start(update: Update, context: CallbackContext):
         'Use /apply if you are an Applicant, and /recruit if you are a Recruiter.\n'
         'Use /help to get more information.'
     ))
-    update.message.reply_text(start_msg, parse_mode=ParseMode.MARKDOWN)
 
+    # Provide a one-time keyboard with the options 'Applicant' and 'Recruiter'
+    keyboard = [['/apply', '/recruit']]
+    reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True)
+
+    update.message.reply_text(start_msg, parse_mode=ParseMode.MARKDOWN, reply_markup=reply_markup)
 def chooseProfile(update: Update, context: CallbackContext):
     context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
 
@@ -174,8 +179,15 @@ def recruit(update: Update, context: CallbackContext):
 
 def recruitersDetails(update: Update, context: CallbackContext):
     context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
+    USER_STATES[update.message.chat_id] = 'recruit'
+    recruiters_queue[update.message.chat_id] = {'details': []}
 
-    user_state = USER_STATES.get(update.message.chat_id)
+    context.bot.send_message(
+        chat_id=update.message.chat_id,
+        text='After submission, the job will be displayed on @cuedjobs channel.',
+    )
+
+    user_state = USER_STATES.get(update.message.chat_id, None)
 
     if user_state == 'recruit':
         if update.message is not None and update.message.chat_id in recruiters_queue:
@@ -362,10 +374,8 @@ def addApplicantDetails(update: Update, context: CallbackContext):
 
 dispatcher.add_handler(CommandHandler('apply', apply))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, addApplicantDetails))
+dispatcher.add_handler(CommandHandler('recruit', recruit))  # Add handler for /recruit command
 dispatcher.add_handler(CommandHandler('start', start))
-#dispatcher.add_handler(CommandHandler('help', botHelp))
-dispatcher.remove_handler(MessageHandler(Filters.text & ~Filters.command, recruit))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, recruitersDetails))
-
 
 updater.start_polling()
