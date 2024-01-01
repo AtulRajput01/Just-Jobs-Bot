@@ -143,9 +143,7 @@ def recruit(update: Update, context: CallbackContext):
 
     if USER_STATES.get(update.message.chat_id) == 'recruit':
         context.bot.send_message(chat_id=update.message.chat_id, text='What is your company name?')
-    elif USER_STATES.get(update.message.chat_id) == 'apply':
-        context.bot.send_message(chat_id=update.message.chat_id, text='What is your full name?')
-
+    
 
 # AWS credentials
 aws_access_key_id = "AKIA4SCY35W54RDN5UMM"
@@ -173,7 +171,7 @@ def recruit(update: Update, context: CallbackContext):
         text='After submission, the job will be displayed on @cuedjobs channel.',
     )
 
-    context.bot.send_message(chat_id=update.message.chat_id, text='What is your company name?')
+    context.bot.send_message(chat_id=update.message.chat_id, text='What is your company 2nd name?')
 
 # ... (previous code)
 
@@ -368,7 +366,7 @@ def addApplicantDetails(update: Update, context: CallbackContext):
             )
     else:
         context.bot.send_message(
-            chat_id=update.message.chat_id, text='Please use /apply to submit job applications.',
+            chat_id=update.message.chat_id, text='Please use /apply to submit last applications.',
         )
 
 
