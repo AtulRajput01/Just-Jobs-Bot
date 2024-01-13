@@ -9,7 +9,6 @@ import sys
 import boto3
 import uuid
 
-
 from telegram import ReplyKeyboardMarkup
 from telegram import ChatAction, ParseMode, Update
 from telegram.ext import (CallbackContext, CommandHandler, Filters, MessageHandler, Updater)
@@ -149,7 +148,7 @@ def recruit(update: Update, context: CallbackContext):
         chat_id=update.message.chat_id,
         text='After submission, your details will be reviewed by recruiters. Use /help for more info.',
     )
-    context.bot.send_message(chat_id=update.message.chat_id, text='What is your company full name?')
+    context.bot.send_message(chat_id=update.message.chat_id, text='What is your company name?')
 
         
 def apply(update: Update, context: CallbackContext):
@@ -184,19 +183,19 @@ def addDetails(update: Update, context: CallbackContext):
                 queue[update.message.chat_id]['answers'].append(update.message.text)
                 context.bot.send_message(
                     chat_id=update.message.chat_id,
-                    text='What is your location?' if user_state == 'recruit' else 'What is your highest qualification?',
+                    text='Office location / Remote work ?' if user_state == 'recruit' else 'What is your highest qualification?',
                 )
             elif current_step == 2:
                 queue[update.message.chat_id]['answers'].append(update.message.text)
                 context.bot.send_message(
                     chat_id=update.message.chat_id,
-                    text='What skills do you need?' if user_state == 'recruit' else 'What skills do you possess?',
+                    text='Which role you are looking for ?' if user_state == 'recruit' else 'What skills do you possess?',
                 )
             elif current_step == 3:
                 queue[update.message.chat_id]['answers'].append(update.message.text)
                 context.bot.send_message(
                     chat_id=update.message.chat_id,
-                    text='What is your company work?' if user_state == 'recruit' else 'What is your relevant work experience? (mention role and duration)',
+                    text='provide emailid' if user_state == 'recruit' else 'What is your relevant work experience? (mention role and duration)',
                 )
             elif current_step == 4:
                 queue[update.message.chat_id]['answers'].append(update.message.text)
@@ -266,9 +265,9 @@ def addDetails(update: Update, context: CallbackContext):
                 )
                 context.bot.send_message(
                     chat_id=update.message.chat_id,
-                    text='Thank you. Your details have been submitted. Recruiters will review your information.' if user_state == 'recruit' else 'Thank you. Your application has been submitted. Recruiters will review your details.',
+                    text='Thank you. Your details have been submitted.' if user_state == 'recruit' else 'Thank you. Your application has been submitted. Recruiters will review your details.',
                 )
-                # Clear the queue for the next submission
+                
                 del queue[update.message.chat_id]
 
         elif update.message.chat.type == 'private':
@@ -283,9 +282,7 @@ def addDetails(update: Update, context: CallbackContext):
 
 dispatcher.add_handler(CommandHandler('apply', apply))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, addDetails))
-dispatcher.add_handler(CommandHandler('recruit', recruit))  # Add handler for /recruit command
+dispatcher.add_handler(CommandHandler('recruit', recruit)) 
 dispatcher.add_handler(CommandHandler('start', start))
-#dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, addrecruiterDetails))
 
 updater.start_polling()
-
