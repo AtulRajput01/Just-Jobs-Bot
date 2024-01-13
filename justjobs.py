@@ -10,11 +10,9 @@ import boto3
 import uuid
 
 
-
 from telegram import ReplyKeyboardMarkup
 from telegram import ChatAction, ParseMode, Update
-from telegram.ext import (CallbackContext, CommandHandler, Filters,
-                          MessageHandler, Updater)
+from telegram.ext import (CallbackContext, CommandHandler, Filters, MessageHandler, Updater)
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO,
@@ -113,6 +111,7 @@ def chooseProfile(update: Update, context: CallbackContext):
     if user_choice == 'applicant':
         apply(update, context)
     elif user_choice == 'recruiter':
+        recruit(update, context)
         # You can add your logic for handling recruiter subscription or any other actions here
         context.bot.send_message(
             chat_id=update.message.chat_id,
@@ -124,30 +123,6 @@ def chooseProfile(update: Update, context: CallbackContext):
             text='Invalid choice. Please select either *Applicant* or *Recruiter*.',
             parse_mode=ParseMode.MARKDOWN,
         )
-def apply(update: Update, context: CallbackContext):
-    context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
-    USER_STATES[update.message.chat_id] = 'apply'
-    applicants_queue[update.message.chat_id] = {'answers': [], 'resume_link': ''}
-    context.bot.send_message(
-        chat_id=update.message.chat_id,
-        text='After submission, your details will be reviewed by recruiters. Use /help for more info.',
-    )
-    context.bot.send_message(chat_id=update.message.chat_id, text='What is your full name?')
-
-def recruit(update: Update, context: CallbackContext):
-    context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
-    USER_STATES[update.message.chat_id] = 'recruit'
-    if update.message.chat_id not in recruiters_queue:
-        recruiters_queue[update.message.chat_id] = {'details': []}
-
-    context.bot.send_message(
-        chat_id=update.message.chat_id,
-        text='After submission, the job will be displayed on @cuedjobs channel.',
-    )
-
-    if USER_STATES.get(update.message.chat_id) == 'recruit':
-        context.bot.send_message(chat_id=update.message.chat_id, text='What is your company name?')
-    
 
 # AWS credentials
 aws_access_key_id = "AKIA4SCY35W54RDN5UMM"
@@ -168,97 +143,13 @@ table_applicant = dynamodb.Table(dynamodb_table_name_applicant)
 def recruit(update: Update, context: CallbackContext):
     context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
     USER_STATES[update.message.chat_id] = 'recruit'
-    recruiters_queue[update.message.chat_id] = {'details': []}
-
+    if update.message.chat_id not in recruiters_queue:
+        recruiters_queue[update.message.chat_id] = {'answers': [], 'resume_link': ''}
     context.bot.send_message(
         chat_id=update.message.chat_id,
-        text='After submission, the job will be displayed on @cuedjobs channel.',
+        text='After submission, your details will be reviewed by recruiters. Use /help for more info.',
     )
-
-    context.bot.send_message(chat_id=update.message.chat_id, text='What is your company 2nd name?')
-
-# ... (previous code)
-
-def recruitersDetails(update: Update, context: CallbackContext):
-    context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
-    USER_STATES[update.message.chat_id] = 'recruit'
-    recruiters_queue[update.message.chat_id] = {'details': []}
-
-    context.bot.send_message(
-        chat_id=update.message.chat_id,
-        text='After submission, the job will be displayed on @cuedjobs channel.',
-    )
-
-    user_state = USER_STATES.get(update.message.chat_id, None)
-
-    if user_state == 'recruit':
-        if update.message is not None and update.message.chat_id in recruiters_queue:
-            current_step = len(recruiters_queue[update.message.chat_id]['details'])
-
-            if current_step == 0:
-                recruiters_queue[update.message.chat_id]['details'].append(update.message.text)
-                context.bot.send_message(
-                    chat_id=update.message.chat_id,
-                    text='Which specific role are you looking to fill?',
-                )
-            elif current_step == 1:
-                recruiters_queue[update.message.chat_id]['details'].append(update.message.text)
-                context.bot.send_message(
-                    chat_id=update.message.chat_id,
-                    text='Could you provide a contact email for communication?',
-                )
-            elif current_step == 2:
-                recruiters_queue[update.message.chat_id]['details'].append(update.message.text)
-                context.bot.send_message(
-                    chat_id=update.message.chat_id,
-                    text='What is the budget or salary range for this position?',
-                )
-            elif current_step == 3:
-                recruiters_queue[update.message.chat_id]['details'].append(update.message.text)
-
-                # Process the gathered information
-                company_name = recruiters_queue[update.message.chat_id]['details'][0]
-                job_role = recruiters_queue[update.message.chat_id]['details'][1]
-                contact_email = recruiters_queue[update.message.chat_id]['details'][2]
-                salary_range = recruiters_queue[update.message.chat_id]['details'][3]
-
-                # Save recruiter data to DynamoDB
-                recruiter_details = {
-                    'telegram_user_id': str(update.message.from_user.id),
-                    'user_id': str(update.message.from_user.id),
-                    'Company Name': company_name,
-                    'Job Role': job_role,
-                    'Contact Email': contact_email,
-                    'Salary Range': salary_range,
-                }
-                table_recruiter.put_item(Item=recruiter_details)
-
-                tg_recruiter_msg = inspect.cleandoc(f"""
-                    Recruiter Information:
-                    Company Name: {company_name}
-                    Job Role: {job_role}
-                    Contact Email: {contact_email}
-                    Salary Range: {salary_range}
-                """)
-
-                context.bot.send_message(
-                    chat_id=ChannelId, text=tg_recruiter_msg, parse_mode=ParseMode.MARKDOWN
-                )
-                context.bot.send_message(
-                    chat_id=update.message.chat_id,
-                    text='Thank you. Your details have been submitted. The job will be displayed on @cuedjobs.',
-                )
-                # Clear the recruiters_queue for the next submission
-                del recruiters_queue[update.message.chat_id]
-
-        elif update.message.chat.type == 'private':
-            context.bot.send_message(
-                chat_id=update.message.chat_id, text='Please use /recruit to submit job details.',
-            )
-    else:
-        context.bot.send_message(
-            chat_id=update.message.chat_id, text='Please use /recruit to submit job details.',
-        )
+    context.bot.send_message(chat_id=update.message.chat_id, text='What is your company full name?')
 
         
 def apply(update: Update, context: CallbackContext):
@@ -272,112 +163,129 @@ def apply(update: Update, context: CallbackContext):
     )
     context.bot.send_message(chat_id=update.message.chat_id, text='What is your full name?')
 
-def addApplicantDetails(update: Update, context: CallbackContext):
+def addDetails(update: Update, context: CallbackContext):
     context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
 
     user_state = USER_STATES.get(update.message.chat_id, None)
 
-    if user_state == 'apply':
-        if update.message is not None and update.message.chat_id in applicants_queue:
-            current_step = len(applicants_queue[update.message.chat_id]['answers'])
+    if user_state == 'apply' or user_state == 'recruit':
+        queue = applicants_queue if user_state == 'apply' else recruiters_queue
+
+        if update.message is not None and update.message.chat_id in queue:
+            current_step = len(queue[update.message.chat_id]['answers'])
 
             if current_step == 0:
-                applicants_queue[update.message.chat_id]['answers'].append(update.message.text)
+                queue[update.message.chat_id]['answers'].append(update.message.text)
                 context.bot.send_message(
                     chat_id=update.message.chat_id,
-                    text='What is your age?',
+                    text='What is your company size?' if user_state == 'recruit' else 'What is your age?',
                 )
             elif current_step == 1:
-                applicants_queue[update.message.chat_id]['answers'].append(update.message.text)
+                queue[update.message.chat_id]['answers'].append(update.message.text)
                 context.bot.send_message(
                     chat_id=update.message.chat_id,
-                    text='What is your highest qualification?',
+                    text='What is your location?' if user_state == 'recruit' else 'What is your highest qualification?',
                 )
             elif current_step == 2:
-                applicants_queue[update.message.chat_id]['answers'].append(update.message.text)
+                queue[update.message.chat_id]['answers'].append(update.message.text)
                 context.bot.send_message(
                     chat_id=update.message.chat_id,
-                    text='What skills do you possess?',
+                    text='What skills do you need?' if user_state == 'recruit' else 'What skills do you possess?',
                 )
             elif current_step == 3:
-                applicants_queue[update.message.chat_id]['answers'].append(update.message.text)
+                queue[update.message.chat_id]['answers'].append(update.message.text)
                 context.bot.send_message(
                     chat_id=update.message.chat_id,
-                    text='What is your relevant work experience? (mention role and duration)',
+                    text='What is your company work?' if user_state == 'recruit' else 'What is your relevant work experience? (mention role and duration)',
                 )
             elif current_step == 4:
-                applicants_queue[update.message.chat_id]['answers'].append(update.message.text)
+                queue[update.message.chat_id]['answers'].append(update.message.text)
                 context.bot.send_message(
                     chat_id=update.message.chat_id,
-                    text='Provide a link to your resume/cv on Google Drive or any other cloud storage (e.g., Dropbox).'
+                    text='Provide a link of company page' if user_state == 'recruit' else 'Provide a link to your resume/cv on Google Drive or any other cloud storage (e.g., Dropbox).'
                 )
             elif current_step == 5:
-                applicants_queue[update.message.chat_id]['answers'].append(update.message.text)
+                queue[update.message.chat_id]['answers'].append(update.message.text)
                 context.bot.send_message(
                     chat_id=update.message.chat_id,
-                    text='Provide a link to your LinkedIn profile.'
+                    text='Provide a link to company LinkedIn page.' if user_state == 'recruit' else 'Provide a link to your LinkedIn profile.'
                 )
             elif current_step == 6:
-                applicants_queue[update.message.chat_id]['answers'].append(update.message.text)
+                queue[update.message.chat_id]['answers'].append(update.message.text)
 
                 # Process the gathered information
-                full_name = applicants_queue[update.message.chat_id]['answers'][0]
-                age = applicants_queue[update.message.chat_id]['answers'][1]
-                highest_qualification = applicants_queue[update.message.chat_id]['answers'][2]
-                skills = applicants_queue[update.message.chat_id]['answers'][3]
-                experience = applicants_queue[update.message.chat_id]['answers'][4]
-                resume_link = applicants_queue[update.message.chat_id]['answers'][5]
-                linkedin_profile = applicants_queue[update.message.chat_id]['answers'][6]
+                full_name = queue[update.message.chat_id]['answers'][0]
+                second_field = queue[update.message.chat_id]['answers'][1]
+                third_field = queue[update.message.chat_id]['answers'][2]
+                fourth_field = queue[update.message.chat_id]['answers'][3]
+                fifth_field = queue[update.message.chat_id]['answers'][4]
+                sixth_field = queue[update.message.chat_id]['answers'][5]
+                seventh_field = queue[update.message.chat_id]['answers'][6]
 
-                # Save user data to DynamoDB
+                # Save user data to DynamoDB - update this based on your needs
                 user_details = {
                     'telegram_user_id': str(update.message.from_user.id),
                     'user_id': str(update.message.from_user.id),
                     'Full Name': full_name,
-                    'Age': age,
-                    'Highest Qualification': highest_qualification,
-                    'Skills': skills,
-                    'Experience': experience,
-                    'Resume Link': resume_link,
-                    'LinkedIn Profile': linkedin_profile,
+                    'Second Field': second_field,
+                    'Third Field': third_field,
+                    'Fourth Field': fourth_field,
+                    'Fifth Field': fifth_field,
+                    'Sixth Field': sixth_field,
+                    'Seventh Field': seventh_field,
                 }
-                table_applicant.put_item(Item=user_details)
+                table = table_recruiter if user_state == 'recruit' else table_applicant
+                table.put_item(Item=user_details)
 
-                tg_applicant_msg = inspect.cleandoc(f"""
-                    Applicant Information:
-                    Name: {full_name}
-                    Age: {age}
-                    Highest Qualification: {highest_qualification}
-                    Skills: {skills}
-                    Experience: {experience}
-                    Resume Link: [Click Here]({resume_link})
-                    LinkedIn Profile: [Click Here]({linkedin_profile})
-                """)
+                # Generate message based on user type
+                if user_state == 'recruit':
+                    tg_msg = inspect.cleandoc(f"""
+                        Recruiter Information:
+                        Full Name: {full_name}
+                        Company Size: {second_field}
+                        Location: {third_field}
+                        Skills Needed: {fourth_field}
+                        Company Work: {fifth_field}
+                        Company Page Link: [Click Here]({sixth_field})
+                        LinkedIn Profile: [Click Here]({seventh_field})
+                    """)
+                else:
+                    tg_msg = inspect.cleandoc(f"""
+                        Applicant Information:
+                        Name: {full_name}
+                        Age: {second_field}
+                        Highest Qualification: {third_field}
+                        Skills: {fourth_field}
+                        Experience: {fifth_field}
+                        Resume Link: [Click Here]({sixth_field})
+                        LinkedIn Profile: [Click Here]({seventh_field})
+                    """)
 
                 context.bot.send_message(
-                    chat_id=ChannelId, text=tg_applicant_msg, parse_mode=ParseMode.MARKDOWN
+                    chat_id=ChannelId, text=tg_msg, parse_mode=ParseMode.MARKDOWN
                 )
                 context.bot.send_message(
                     chat_id=update.message.chat_id,
-                    text='Thank you. Your application has been submitted. Recruiters will review your details.',
+                    text='Thank you. Your details have been submitted. Recruiters will review your information.' if user_state == 'recruit' else 'Thank you. Your application has been submitted. Recruiters will review your details.',
                 )
-                # Clear the applicant queue for the next submission
-                del applicants_queue[update.message.chat_id]
+                # Clear the queue for the next submission
+                del queue[update.message.chat_id]
 
         elif update.message.chat.type == 'private':
             context.bot.send_message(
-                chat_id=update.message.chat_id, text='Please use /apply to submit job applications.',
+                chat_id=update.message.chat_id, text=f'Please use /{user_state} to submit {user_state} details.',
             )
     else:
         context.bot.send_message(
-            chat_id=update.message.chat_id, text='Please use /apply to submit last applications.',
+            chat_id=update.message.chat_id, text='Please use /apply or /recruit to submit applications.',
         )
-#other code
+
 
 dispatcher.add_handler(CommandHandler('apply', apply))
-dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, addApplicantDetails))
+dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, addDetails))
 dispatcher.add_handler(CommandHandler('recruit', recruit))  # Add handler for /recruit command
 dispatcher.add_handler(CommandHandler('start', start))
-dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, recruitersDetails))
+#dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, addrecruiterDetails))
 
 updater.start_polling()
+
