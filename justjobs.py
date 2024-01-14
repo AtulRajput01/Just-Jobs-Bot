@@ -9,6 +9,7 @@ import sys
 import boto3
 import uuid
 
+from datetime import datetime, timedelta
 from telegram import ReplyKeyboardMarkup
 from telegram import ChatAction, ParseMode, Update
 from telegram.ext import (CallbackContext, CommandHandler, Filters, MessageHandler, Updater)
@@ -42,7 +43,6 @@ else:
 """
 ---Process ID Management Ends---
 """ 
-
 
 """
 ---Token Management Starts---
@@ -138,19 +138,108 @@ dynamodb_table_name_applicant = "cued_bot"
 dynamodb = boto3.resource('dynamodb', region_name=aws_region, aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
 table_recruiter = dynamodb.Table(dynamodb_table_name_recruiter)
 table_applicant = dynamodb.Table(dynamodb_table_name_applicant)
+table_recruiter_subscription = dynamodb.Table('recruiter_subscription') 
+
+
+def check_subscription_status(user_id):
+    try:
+        response = table_recruiter.get_item(Key={'user_id': str(user_id)})
+        item = response.get('Item')
+
+        if item:
+            is_subscribed = item.get('is_subscribed', False)
+            points_balance = item.get('points_balance', 0)
+            
+            # Check if subscription has expired
+            subscription_date = item.get('subscription_date')
+            if subscription_date:
+                expiration_date = subscription_date + timedelta(days=90)  # Assuming 90 days subscription period
+                if datetime.now() > expiration_date:
+                    is_subscribed = False  # Subscription has expired
+            else:
+                # Assign 100 points if the user is new
+                is_subscribed = True
+                points_balance = 100
+                subscription_date = int(datetime.now().timestamp())
+                # Update DynamoDB with the new points and subscription date
+                table_recruiter.put_item(
+                    Item={
+                        'telegram_user_id': str(user_id),
+                        'user_id': str(user_id),
+                        'is_subscribed': is_subscribed,
+                        'points_balance': points_balance,
+                        'subscription_date': subscription_date,
+                    }
+                )
+            
+            return is_subscribed, points_balance
+        else:
+            # Assign 100 points if the user is new
+            is_subscribed = True
+            points_balance = 100
+            subscription_date = int(datetime.now().timestamp())
+            # Update DynamoDB with the new points and subscription date
+            table_recruiter.put_item(
+                Item={
+                    'telegram_user_id': str(user_id),
+                    'user_id': str(user_id),
+                    'is_subscribed': is_subscribed,
+                    'points_balance': points_balance,
+                    'subscription_date': subscription_date,
+                }
+            )
+            return is_subscribed, points_balance
+    except Exception as e:
+        print(f"Error checking subscription status: {str(e)}")
+        return False, 0
+
 
 def recruit(update: Update, context: CallbackContext):
     context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
     USER_STATES[update.message.chat_id] = 'recruit'
+
+    # Check if the recruiter already has points (to avoid giving points every time they enter)
+    is_subscribed, points_balance = check_subscription_status(update.message.from_user.id)
+
+    if not is_subscribed:
+        # Give 100 points to the recruiter
+        points_balance = 100
+        table_recruiter.put_item(
+            Item={
+                'telegram_user_id': str(update.message.from_user.id),
+                'user_id': str(update.message.from_user.id),
+                'is_subscribed': True,
+                'points_balance': points_balance,
+                'subscription_date': int(datetime.now().timestamp()),  # Store the subscription date
+            }
+        )
+
+    # Retrieve the latest points_balance from the DynamoDB table
+    is_subscribed, points_balance = check_subscription_status(update.message.from_user.id)
+
     if update.message.chat_id not in recruiters_queue:
         recruiters_queue[update.message.chat_id] = {'answers': [], 'resume_link': ''}
+
     context.bot.send_message(
         chat_id=update.message.chat_id,
-        text='After submission, your details will be reviewed by recruiters. Use /help for more info.',
+        text=f'After submission, your details will be reviewed by recruiters. You have {points_balance} points.'
     )
     context.bot.send_message(chat_id=update.message.chat_id, text='What is your company name?')
 
-        
+    # Deduct 10 points from the recruiter's balance
+    if is_subscribed:
+        updated_points_balance = max(0, points_balance - 10)
+        table_recruiter.update_item(
+            Key={'user_id': str(update.message.from_user.id)},
+            UpdateExpression='SET points_balance = :points',
+            ExpressionAttributeValues={':points': updated_points_balance}
+        )
+
+        # Update the points_balance in the USER_STATES dictionary for real-time tracking
+        USER_STATES[update.message.chat_id] = updated_points_balance
+
+
+
 def apply(update: Update, context: CallbackContext):
     context.bot.sendChatAction(chat_id=update.message.chat_id, action=ChatAction.TYPING)
     USER_STATES[update.message.chat_id] = 'apply'
