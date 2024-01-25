@@ -24,7 +24,7 @@ logging.basicConfig(
 This part of the code helps out when you want to run your program in the background using '&'. This will
 save the process id of the program going in the background in a file named 'pid'. Now, when you run your
 program again, last one will be terminated with the help of pid. If in case the no process exists
-with the given process id, simply  pid file will be deleted and a new one with the current pid will be
+with the given process id, simply  pid file will be deleted and a new one with current pid will be
 created...
 """
 currentPID = os.getpid()
