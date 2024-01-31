@@ -25,7 +25,7 @@ This part of the code helps out when you want to run your program in the backgro
 save the process id of the program going in background in a file named 'pid'. Now, when you run your
 program again, last one will be terminated with help of pid. If in case the no process exists
 with the given process id, simply  pid file will be deleted and a new one with current pid will be
-created...
+created..
 """
 currentPID = os.getpid()
 if 'pid' not in os.listdir():
