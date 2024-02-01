@@ -46,7 +46,7 @@ else:
 
 """
 ---Token Management Starts---
-This part will check for the config.json file which holds the Telegram and Channel ID and will also
+This part will check for the config.json file which holds  Telegram and Channel ID and will also
 give a user-friendly message if they are invalid. A new file is created if not present in the project
 directory.
 """
