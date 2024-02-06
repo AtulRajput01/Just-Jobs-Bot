@@ -52,7 +52,7 @@ directory.
 """
 configError = (
     'Please open config.json file located in the project directory and replace the value "0" of '
-    'Telegram-Bot-Token with the Token you received from botfather.'
+    'Telegram-Bot-Token with Token you received from botfather.'
 )
 if 'config.json' not in os.listdir():
     with open('config.json', mode='w') as f:
