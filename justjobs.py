@@ -95,7 +95,7 @@ def start(update: Update, context: CallbackContext):
     start_msg = inspect.cleandoc((
         'Hi there! Are you an *Applicant* or a *Recruiter*?\n'
         'Use /apply if you are an Applicant, and /recruit if you are a Recruiter.\n'
-        'Use /help to get more information.'
+        'Use /help to get more information..'
     ))
 
     # Provide a one-time keyboard with the options 'Applicant' and 'Recruiter'
