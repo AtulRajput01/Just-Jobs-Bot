@@ -48,7 +48,7 @@ else:
 ---Token Management Starts---
 This part will check for the config.json file which holds  Telegram and Channel ID and will also
 give a user-friendly message if they are invalid. A new file is created if not present in the project
-directory.
+directory....
 """
 configError = (
     'Please open config.json file located in the project directory and replace the value "0" of '
