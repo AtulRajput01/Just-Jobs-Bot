@@ -3,9 +3,7 @@
 Just Jobs Bot is a telegram bot which gathers detail of job opening from employer and post on the Just Jobs Channel.
 
 
-
-file:///home/amazing_atul/Pictures/Screenshots/spam.png
-
+![alt text](spam.png)
 
 
 ## How To Use
