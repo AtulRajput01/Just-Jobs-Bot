@@ -2,6 +2,12 @@
 ### Current Version - 0.6 [![Build Status](https://github.com/AtulRajput01/cued-job_bot.git.svg?branch=main)](https://github.com/AtulRajput01/cued-job_bot.git) ([see change logs](https://github.com/AtulRajput01/cued-job_bot.git)
 Just Jobs Bot is a telegram bot which gathers detail of job opening from employer and post on the Just Jobs Channel.
 
+
+
+file:///home/amazing_atul/Pictures/Screenshots/spam.png
+
+
+
 ## How To Use
 
 To use the bot you simply have to send below mentioned commands as text message.
