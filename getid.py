@@ -45,7 +45,7 @@ post Job Details. Make sure to add JustJobsBot to the Channel as Administrator, 
 and send any text message to the Channel. The ID will be logged in the terminal afterwards. Update
 `config.py` with this Channel ID.
 """
-updater = Updater(token=TelegramBotToken)
+updater = Updater(token="6953050320:AAEkOkS_sFuB7IddIKcNmf13uS1FI5P3P58")
 dispatcher = updater.dispatcher
 
 

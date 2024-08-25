@@ -85,7 +85,8 @@ applicants_queue = {}
 recruiters_queue = {}
 
 
-updater = Updater(token=TelegramBotToken)
+updater = Updater(token="6953050320:AAEkOkS_sFuB7IddIKcNmf13uS1FI5P3P58")
+
 dispatcher = updater.dispatcher
 
 
