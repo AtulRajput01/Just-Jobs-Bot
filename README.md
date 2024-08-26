@@ -29,6 +29,8 @@ The sole purpose of this bot is to get following details from the employer about
 
 ## How To Deploy Your Instance Of This Bot
 
+
+
 You need Python 3 (recommended version 3.9+) and PIP installed for this to work
 * Fork the repo to your profile
 * `git clone link-to-repo.git` - Clone your copy of this repo to your local machine
@@ -45,6 +47,15 @@ You need Python 3 (recommended version 3.9+) and PIP installed for this to work
 * Replace this unique ID with `Channel-Id` in `config.json` file
 * Now run `python justjobs.py`
 * You can now use commands mentioned above in `How To Use` section
+
+## Run through Docker
+`git clone https://github.com/AtulRajput01/Just-Jobs-Bot.git` - Clone your copy of this repo to your local machine
+'sudo docker build -t just-jobs-bot .'
+'sudo docker run -it just-jobs-bot'
+
+
+
+
 
 ## How To Contribute
 
